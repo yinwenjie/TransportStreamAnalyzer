@@ -5,6 +5,9 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
+    <Filter Include="2.Packet">
+      <UniqueIdentifier>{bd24dc13-0457-496b-a7a3-aad7e07ced09}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
@@ -13,6 +16,9 @@
     <ClCompile Include="..\..\TSParserLib\TSParserLib.cpp">
       <Filter>1.Lib</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\TSParserLib\TSPacket.cpp">
+      <Filter>2.Packet</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\TSParserLib\TSParserLib.h">
@@ -20,6 +26,9 @@
     </ClInclude>
     <ClInclude Include="..\..\TSParserLib\include.h">
       <Filter>1.Lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\TSParserLib\TSPacket.h">
+      <Filter>2.Packet</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

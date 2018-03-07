@@ -13,18 +13,29 @@
 
 #include "include.h"
 
+// TS parsing error codes...
+const int kTSParserError_NoError = 0;
+const int kTSParserError_NullFileName = -1;
+const int kTSParserError_OpenInputFileFailed = -2;
+const int kTSParserError_ReadInputFileFailed = -3;
+const int kTSParserError_PacketNotStartWith47 = -4;
+
 class TSPARSERLIB_API CTransportStreamParser
 {
 public:
 	CTransportStreamParser(const char *file_name);
 	~CTransportStreamParser();
 	
-	// Parse FLV file...
+	// Parse TS file...
 	int Parse();
 private:
-	const char *m_file_name;
+	const char*	m_file_name;
 	UINT64		m_file_size;
+	BYTE*		m_file_buf;
+	UINT32		m_packet_count;
 
-	std::ifstream m_inFileStream;	// input file stream...
+	std::ifstream m_in_file_stream;	// input file stream...
 	int		open_input_file();		// open input file by file name...
+	int     get_input_file_data();	// read input file data to buffer...
+	void	close_input_file();		// close input file...
 };

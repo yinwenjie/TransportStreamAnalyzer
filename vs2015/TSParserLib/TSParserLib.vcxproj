@@ -136,10 +136,12 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\TSParserLib\TSPacket.cpp" />
     <ClCompile Include="..\..\TSParserLib\TSParserLib.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\TSParserLib\include.h" />
+    <ClInclude Include="..\..\TSParserLib\TSPacket.h" />
     <ClInclude Include="..\..\TSParserLib\TSParserLib.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
