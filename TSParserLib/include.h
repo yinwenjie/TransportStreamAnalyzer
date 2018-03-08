@@ -3,8 +3,10 @@
 
 #include <iostream>
 #include <fstream>
+#include <string>
 
-
+#include "Configuration.h"
 #include "DataTypes.h"
+#include "GlobalUtils.h"
 
 #endif // _INCLUDE_H_

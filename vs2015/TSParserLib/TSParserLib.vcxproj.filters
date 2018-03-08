@@ -19,6 +19,9 @@
     <ClCompile Include="..\..\TSParserLib\TSPacket.cpp">
       <Filter>2.Packet</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\TSParserLib\GlobalUtils.cpp">
+      <Filter>1.Lib</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\TSParserLib\TSParserLib.h">
@@ -29,6 +32,12 @@
     </ClInclude>
     <ClInclude Include="..\..\TSParserLib\TSPacket.h">
       <Filter>2.Packet</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\TSParserLib\Configuration.h">
+      <Filter>1.Lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\TSParserLib\GlobalUtils.h">
+      <Filter>1.Lib</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -28,6 +28,7 @@ public:
 	
 	// Parse TS file...
 	int Parse();
+	void Dump_ts_info();
 private:
 	const char*	m_file_name;
 	UINT64		m_file_size;

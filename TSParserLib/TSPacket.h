@@ -8,6 +8,7 @@ public:
 	~CTransportStreamPacket();
 
 	int Parse_one_ts_packet(BYTE *buffer);
+	void Dump_packet_info(int pkt_idx);
 
 	UINT8	sync_byte;
 	bool	transport_error_indicator;

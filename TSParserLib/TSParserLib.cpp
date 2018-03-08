@@ -1,3 +1,4 @@
+#include "include.h"
 #include "TSParserLib.h"
 #include "TSPacket.h"
 
@@ -11,17 +12,23 @@ CTransportStreamParser::CTransportStreamParser(const char *file_name)
 	}
 
 	m_file_size = 0;
+#if DUMP_TS_INFO_ENABLED_LOG
+	g_logoutFile.open("Log.txt");
+#endif
 }
 
 CTransportStreamParser::~CTransportStreamParser()
 {
-
+#if DUMP_TS_INFO_ENABLED_LOG
+	g_logoutFile.close();
+#endif
 }
 
 //*************** Public API ***************
 int CTransportStreamParser::Parse()
 {
-	int err = open_input_file();
+	int err = kTSParserError_NoError;
+	err = open_input_file();
 	if (err < 0)
 	{
 		return err;
@@ -32,15 +39,38 @@ int CTransportStreamParser::Parse()
 	{
 		return err;
 	}
+	Dump_ts_info();
 
 	for (int idx = 0; idx < m_packet_count; idx++)
 	{
 		BYTE *pkt_buf = m_file_buf + 188 * idx;
 		CTransportStreamPacket pkt;
-		pkt.Parse_one_ts_packet(pkt_buf);
+		err = pkt.Parse_one_ts_packet(pkt_buf);		
+		if (err < 0)
+		{
+			break;
+		}
+		pkt.Dump_packet_info(idx);
 	}
 
-	return kTSParserError_NoError;
+	return err;
+}
+
+void CTransportStreamParser::Dump_ts_info()
+{
+#if DUMP_TS_INFO_ENABLED_CONSOLE
+	cout << "***********************************" << endl;
+	cout << "File Name: " << m_file_name << endl;
+	cout << "File Size: " << to_string(m_file_size) << endl;
+	cout << "***********************************" << endl;
+#endif
+
+# if DUMP_TS_INFO_ENABLED_LOG
+	g_logoutFile << "***********************************" << endl;
+	g_logoutFile << "File Name: " << m_file_name << endl;
+	g_logoutFile << "File Size: " << to_string(m_file_size) << endl;
+	g_logoutFile << "***********************************" << endl;
+#endif
 }
 
 //*************** Private Methods ***************
