@@ -7,6 +7,7 @@
 
 #include "Configuration.h"
 #include "DataTypes.h"
+#include "Memory.h"
 #include "GlobalUtils.h"
 
 #endif // _INCLUDE_H_

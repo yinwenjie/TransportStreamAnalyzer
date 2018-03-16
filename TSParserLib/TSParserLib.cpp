@@ -44,8 +44,9 @@ int CTransportStreamParser::Parse()
 	for (int idx = 0; idx < m_packet_count; idx++)
 	{
 		BYTE *pkt_buf = m_file_buf + 188 * idx;
+		reset_ctx(pkt_buf);
 		CTransportStreamPacket pkt;
-		err = pkt.Parse_one_ts_packet(pkt_buf);		
+		err = pkt.Parse_one_ts_packet();		
 		if (err < 0)
 		{
 			break;
@@ -104,6 +105,9 @@ int CTransportStreamParser::get_input_file_data()
 		close_input_file();
 		return kTSParserError_ReadInputFileFailed;
 	}
+
+	f_ctx.file_buf = m_file_buf;
+	f_ctx.byte_position = 0;
 
 	return kTSParserError_NoError;
 }

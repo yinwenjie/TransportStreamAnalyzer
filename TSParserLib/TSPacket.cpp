@@ -12,27 +12,36 @@ CTransportStreamPacket::~CTransportStreamPacket()
 {
 }
 
-int CTransportStreamPacket::Parse_one_ts_packet(BYTE *buffer)
+int CTransportStreamPacket::Parse_one_ts_packet()
 {
-	sync_byte = buffer[0];
+	sync_byte = read_byte();
 	if (sync_byte != 0x47)
 	{
 		return kTSParserError_PacketNotStartWith47;
 	}
 
-	UINT16 temp = buffer[1] + buffer[2] << 8;
-	transport_error_indicator = (temp >> 15) & 1;
-	payload_unit_start_indicator = (temp >> 14) & 1;
-	transport_priority = (temp >> 13) & 1;
-	PID = temp & 0x1FFF;
+	UINT16 temp16 = read_duo_byte();// buffer[1] + buffer[2] << 8;
+	transport_error_indicator = (temp16 >> 15) & 1;
+	payload_unit_start_indicator = (temp16 >> 14) & 1;
+	transport_priority = (temp16 >> 13) & 1;
+	PID = temp16 & 0x1FFF;
 
-	trasport_scrambling_control = (buffer[4] >> 6) & 3;
-	adaption_field_control = (buffer[4] >> 4) & 3;
-	continuity_counter = buffer[4] & 15;
+	BYTE temp8 = read_byte();
+	trasport_scrambling_control = (temp8 >> 6) & 3;
+	adaption_field_control = (temp8 >> 4) & 3;
+	continuity_counter = temp8 & 15;
 
 	if (adaption_field_control == 2 || adaption_field_control == 3)
 	{
-		parse_adaptation_field(buffer + 5);
+		parse_adaptation_field();
+	}
+
+	if (adaption_field_control == 1)
+	{
+		if (PID == 0)
+		{
+			parse_prog_associ_table();
+		}
 	}
 
 	return kTSParserError_NoError;
@@ -69,22 +78,30 @@ void CTransportStreamPacket::Dump_packet_info(int pkt_idx)
 	{
 		dump_adaptation_field();
 	}
+	if (adaption_field_control == 1)
+	{
+		if (PID == 0)
+		{
+			dump_prog_associ_table();
+		}
+	}
 #endif
 }
 
-int CTransportStreamPacket::parse_adaptation_field(BYTE *buffer)
+int CTransportStreamPacket::parse_adaptation_field()
 {
-	adaption_field.adaptation_field_length = buffer[0];
+	adaption_field.adaptation_field_length = read_byte();
 	if (adaption_field.adaptation_field_length > 0)
 	{
-		adaption_field.discontinuity_indicator = buffer[1] & (1 << 0);
-		adaption_field.random_access_indicator = buffer[1] & (1 << 1);
-		adaption_field.elementary_stream_priority_indicator = buffer[1] & (1 << 2);
-		adaption_field.PCR_flag = buffer[1] & (1 << 3);
-		adaption_field.OPCR_flag = buffer[1] & (1 << 4);
-		adaption_field.splicing_point_flag = buffer[1] & (1 << 5);
-		adaption_field.transport_private_data_flag = buffer[1] & (1 << 6);
-		adaption_field.adaptation_field_extension_flag = buffer[1] & (1 << 7);
+		BYTE temp8 = read_byte();
+		adaption_field.discontinuity_indicator = temp8 & (1 << 0);
+		adaption_field.random_access_indicator = temp8 & (1 << 1);
+		adaption_field.elementary_stream_priority_indicator = temp8 & (1 << 2);
+		adaption_field.PCR_flag = temp8 & (1 << 3);
+		adaption_field.OPCR_flag = temp8 & (1 << 4);
+		adaption_field.splicing_point_flag = temp8 & (1 << 5);
+		adaption_field.transport_private_data_flag = temp8 & (1 << 6);
+		adaption_field.adaptation_field_extension_flag = temp8 & (1 << 7);
 	}
 
 	return kTSParserError_NoError;
@@ -103,5 +120,65 @@ void CTransportStreamPacket::dump_adaptation_field()
 		g_logoutFile << "splicing_point_flag: " << to_string(adaption_field.splicing_point_flag) << endl;
 		g_logoutFile << "transport_private_data_flag: " << to_string(adaption_field.transport_private_data_flag) << endl;
 		g_logoutFile << "adaptation_field_extension_flag: " << to_string(adaption_field.adaptation_field_extension_flag) << endl;
+	}
+}
+
+int CTransportStreamPacket::parse_prog_associ_table()
+{
+	BYTE temp8 = 0;
+	UINT16 temp16 = 0;
+	if (payload_unit_start_indicator)
+	{
+		read_byte();//pointer_field;
+	}
+	pat.table_id = read_byte();
+	temp16 = read_duo_byte();
+	pat.section_syntax_indicator = (temp16 >> 15) & 0x01;
+	pat.section_length = temp16 & 0x0FFF;
+	pat.transport_stream_id = read_duo_byte();
+
+	temp8 = read_byte();
+	pat.version_number = (temp8 >> 1) & 0x1F;
+	pat.current_next_indicator = temp8 & 0x01;
+	pat.section_number = read_byte();
+	pat.last_section_number = read_byte();
+
+	int N = (pat.section_length - 9) / 4;
+	pat.program_number = (UINT16*)malloc(N * sizeof(UINT16));
+	pat.PID_type = (bool*)malloc(N * sizeof(bool));
+	pat.PID_array = (UINT16*)malloc(N * sizeof(UINT16));
+
+	for (int idx = 0; idx < N; idx++)
+	{
+		pat.program_number[idx] = read_duo_byte();
+		if (pat.program_number[idx] == 0)
+		{
+			pat.PID_type[idx] = 0;
+		} 
+		else
+		{
+			pat.PID_type[idx] = 1;
+		}
+		pat.PID_array[idx] = read_duo_byte() & 0x1FFF;
+	}
+
+	return kTSParserError_NoError;
+}
+
+void CTransportStreamPacket::dump_prog_associ_table()
+{
+	g_logoutFile << "PAT:table_id = " << to_string(pat.table_id) << endl;
+	g_logoutFile << "PAT:section_syntax_indicator = " << to_string(pat.section_syntax_indicator) << endl;
+	g_logoutFile << "PAT:section_length = " << to_string(pat.section_length) << endl;
+	g_logoutFile << "PAT:transport_stream_id = " << to_string(pat.transport_stream_id) << endl;
+	g_logoutFile << "PAT:version_number = " << to_string(pat.version_number) << endl;
+	g_logoutFile << "PAT:current_next_indicator = " << to_string(pat.current_next_indicator) << endl;
+	g_logoutFile << "PAT:section_number = " << to_string(pat.section_number) << endl;
+	g_logoutFile << "PAT:last_section_number = " << to_string(pat.last_section_number) << endl;
+	int N = (pat.section_length - 9) / 4;
+	for (int idx = 0; idx < N; idx++)
+	{
+		g_logoutFile << "PAT:program_number = " << to_string(pat.program_number[idx]) << endl;
+		g_logoutFile << (pat.PID_type[idx] ? "PAT:program_map_PID = " : "PAT:network_PID = ") << to_string(pat.PID_array[idx]) << endl;
 	}
 }

@@ -137,6 +137,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\TSParserLib\GlobalUtils.cpp" />
+    <ClCompile Include="..\..\TSParserLib\Memory.cpp" />
     <ClCompile Include="..\..\TSParserLib\TSPacket.cpp" />
     <ClCompile Include="..\..\TSParserLib\TSParserLib.cpp" />
   </ItemGroup>
@@ -144,6 +145,7 @@
     <ClInclude Include="..\..\TSParserLib\Configuration.h" />
     <ClInclude Include="..\..\TSParserLib\GlobalUtils.h" />
     <ClInclude Include="..\..\TSParserLib\include.h" />
+    <ClInclude Include="..\..\TSParserLib\Memory.h" />
     <ClInclude Include="..\..\TSParserLib\TSPacket.h" />
     <ClInclude Include="..\..\TSParserLib\TSParserLib.h" />
   </ItemGroup>
