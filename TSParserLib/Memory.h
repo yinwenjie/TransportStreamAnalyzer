@@ -11,6 +11,7 @@ typedef struct File_context
 extern File_context f_ctx;
 
 void reset_ctx(BYTE *buf);
+void skip_bytes(int len);
 BYTE read_byte();
 UINT16 read_duo_byte();
 

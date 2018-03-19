@@ -8,6 +8,11 @@ void reset_ctx(BYTE *buf)
 	f_ctx.byte_position = 0;
 }
 
+void skip_bytes(int len)
+{
+	f_ctx.byte_position += len;
+}
+
 BYTE read_byte()
 {
 	return f_ctx.file_buf[f_ctx.byte_position++];

@@ -42,6 +42,11 @@ int CTransportStreamPacket::Parse_one_ts_packet()
 		{
 			parse_prog_associ_table();
 		}
+
+		if (pmt_id == PID)
+		{
+			parse_prog_map_table();
+		}
 	}
 
 	return kTSParserError_NoError;
@@ -83,6 +88,11 @@ void CTransportStreamPacket::Dump_packet_info(int pkt_idx)
 		if (PID == 0)
 		{
 			dump_prog_associ_table();
+		}
+
+		if (pmt_id == PID)
+		{
+			dump_prog_map_table();
 		}
 	}
 #endif
@@ -160,6 +170,10 @@ int CTransportStreamPacket::parse_prog_associ_table()
 			pat.PID_type[idx] = 1;
 		}
 		pat.PID_array[idx] = read_duo_byte() & 0x1FFF;
+		if (pat.PID_type[idx] == 1)
+		{
+			pmt_id = pat.PID_array[idx];
+		}
 	}
 
 	return kTSParserError_NoError;
@@ -180,5 +194,68 @@ void CTransportStreamPacket::dump_prog_associ_table()
 	{
 		g_logoutFile << "PAT:program_number = " << to_string(pat.program_number[idx]) << endl;
 		g_logoutFile << (pat.PID_type[idx] ? "PAT:program_map_PID = " : "PAT:network_PID = ") << to_string(pat.PID_array[idx]) << endl;
+	}
+}
+
+int CTransportStreamPacket::parse_prog_map_table()
+{
+	BYTE temp8 = 0;
+	UINT16 temp16 = 0;
+	if (payload_unit_start_indicator)
+	{
+		read_byte();//pointer_field;
+	}
+
+	pmt.table_id = read_byte();
+	temp16 = read_duo_byte();
+	pmt.section_syntax_indicator = (temp16 >> 15) & 0x0001;
+	pmt.section_length = temp16 & 0x0FFF;
+
+	pmt.program_number = read_duo_byte();
+	temp8 = read_byte();
+	pmt.version_number = (temp8 >> 1) & 0x1F;
+	pmt.current_next_indicator = temp8 & 0x01;
+
+	pmt.section_number = read_byte();
+	pmt.last_section_number = read_byte();
+	temp16 = read_duo_byte();
+	pmt.PCR_PID = temp16 & 0x1FFF;
+	temp16 = read_duo_byte();
+	pmt.program_info_length = temp16 & 0x0FFF;
+
+	skip_bytes(pmt.program_info_length);
+	int len_rem = pmt.section_length - 13 - pmt.program_info_length, idx = 0;
+	while (len_rem > 0)
+	{
+		pmt.stream_type[idx] = read_byte();
+		pmt.elementary_PID[idx] = read_duo_byte() & 0x1FFF;
+		pmt.ES_info_length[idx] = read_duo_byte() & 0x0FFF;
+		len_rem -= (pmt.ES_info_length[idx] + 5);
+		idx++;
+	}
+	pmt.ES_Count = idx;
+
+
+	return kTSParserError_NoError;
+}
+
+void CTransportStreamPacket::dump_prog_map_table()
+{
+	g_logoutFile << "PMT:table_id = " << to_string(pmt.table_id) << endl;
+	g_logoutFile << "PMT:section_syntax_indicator = " << to_string(pmt.section_syntax_indicator) << endl;
+	g_logoutFile << "PMT:section_length = " << to_string(pmt.section_length) << endl;
+	g_logoutFile << "PMT:program_number = " << to_string(pmt.program_number) << endl;
+	g_logoutFile << "PMT:version_number = " << to_string(pmt.version_number) << endl;
+	g_logoutFile << "PMT:current_next_indicator = " << to_string(pmt.current_next_indicator) << endl;
+	g_logoutFile << "PMT:section_number = " << to_string(pmt.section_number) << endl;
+	g_logoutFile << "PMT:last_section_number = " << to_string(pmt.last_section_number) << endl;
+	g_logoutFile << "PMT:PCR_PID = " << to_string(pmt.PCR_PID) << endl;
+	g_logoutFile << "PMT:program_info_length = " << to_string(pmt.program_info_length) << endl;
+
+	for (int idx = 0; idx < pmt.ES_Count; idx++)
+	{
+		g_logoutFile << to_string(idx) << "-PMT:stream_type = " << to_string(pmt.stream_type[idx]) << endl;
+		g_logoutFile << to_string(idx) << "-PMT:elementary_PID = " << to_string(pmt.elementary_PID[idx]) << endl;
+		g_logoutFile << to_string(idx) << "-PMT:ES_info_length = " << to_string(pmt.ES_info_length[idx]) << endl;
 	}
 }
