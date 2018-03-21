@@ -45,5 +45,8 @@
     <ClInclude Include="..\..\TSParserLib\Memory.h">
       <Filter>1.Lib</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\TSParserLib\DataTypes.h">
+      <Filter>1.Lib</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -143,6 +143,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\TSParserLib\Configuration.h" />
+    <ClInclude Include="..\..\TSParserLib\DataTypes.h" />
     <ClInclude Include="..\..\TSParserLib\GlobalUtils.h" />
     <ClInclude Include="..\..\TSParserLib\include.h" />
     <ClInclude Include="..\..\TSParserLib\Memory.h" />

@@ -50,6 +50,37 @@ typedef struct Program_Map_Section
 	UINT16	ES_info_length[MAX_ES_INFO_IN_PMT];
 };
 
+enum PES_Stream_Type
+{
+	PES_Unknown = 0,
+	PES_Video = 1,
+	PES_Audio = 2,
+};
+
+typedef struct PES_Packet
+{
+	UINT8	stream_id;
+	UINT16	PES_packet_length;
+	UINT8	stream_type;
+	UINT8	PES_scrambling_control;
+	bool	PES_priority;
+	bool	data_alignment_indicator;
+	bool	copyright;
+	bool	original_or_copy;
+	UINT8	PTS_DTS_flags;
+	bool	ESCR_flag;
+	bool	ES_rate_flag;
+	bool	DSM_trick_mode_flag;
+	bool	additional_copy_info_flag;
+	bool	PES_CRC_flag;
+	bool	PES_extension_flag;
+	UINT8	PES_header_data_length;
+	UINT8	PTS_arr[5];
+	UINT64	PTS;
+	UINT8	DTS_arr[5];
+	UINT64	DTS;
+} PES_Packet;
+
 class CTransportStreamPacket
 {
 public:
@@ -73,6 +104,8 @@ public:
 	Program_Map_Section pmt;
 	UINT16	pmt_id;
 
+	PES_Packet	pes;
+
 private:
 	BYTE*	payload_start;
 	UINT8	payload_length;
@@ -85,6 +118,10 @@ private:
 
 	int		parse_prog_map_table();
 	void	dump_prog_map_table();
+
+	bool	is_PES_packet();
+	int		parse_PES_packet();
+	void	dump_PES_packet();
 };
 
 #endif

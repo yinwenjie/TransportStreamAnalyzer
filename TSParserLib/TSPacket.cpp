@@ -4,6 +4,9 @@
 
 using namespace std;
 
+static UINT16 Elementary_Streams_ID[MAX_ES_INFO_IN_PMT];
+static int Elementary_Streams_Count;
+
 CTransportStreamPacket::CTransportStreamPacket()
 {
 }
@@ -31,12 +34,14 @@ int CTransportStreamPacket::Parse_one_ts_packet()
 	adaption_field_control = (temp8 >> 4) & 3;
 	continuity_counter = temp8 & 15;
 
-	if (adaption_field_control == 2 || adaption_field_control == 3)
+	bool has_adaptation_field = (adaption_field_control >> 1) & 0x01, has_payload = adaption_field_control & 0x01;
+
+	if (has_adaptation_field)
 	{
 		parse_adaptation_field();
 	}
 
-	if (adaption_field_control == 1)
+	if (has_payload)
 	{
 		if (PID == 0)
 		{
@@ -46,6 +51,11 @@ int CTransportStreamPacket::Parse_one_ts_packet()
 		if (pmt_id == PID)
 		{
 			parse_prog_map_table();
+		}
+
+		if (is_PES_packet())
+		{
+			parse_PES_packet();
 		}
 	}
 
@@ -83,6 +93,7 @@ void CTransportStreamPacket::Dump_packet_info(int pkt_idx)
 	{
 		dump_adaptation_field();
 	}
+
 	if (adaption_field_control == 1)
 	{
 		if (PID == 0)
@@ -93,6 +104,11 @@ void CTransportStreamPacket::Dump_packet_info(int pkt_idx)
 		if (pmt_id == PID)
 		{
 			dump_prog_map_table();
+		}
+
+		if (is_PES_packet())
+		{
+			dump_PES_packet();
 		}
 	}
 #endif
@@ -113,6 +129,7 @@ int CTransportStreamPacket::parse_adaptation_field()
 		adaption_field.transport_private_data_flag = temp8 & (1 << 6);
 		adaption_field.adaptation_field_extension_flag = temp8 & (1 << 7);
 	}
+	skip_bytes(adaption_field.adaptation_field_length - 1);
 
 	return kTSParserError_NoError;
 }
@@ -229,12 +246,13 @@ int CTransportStreamPacket::parse_prog_map_table()
 	{
 		pmt.stream_type[idx] = read_byte();
 		pmt.elementary_PID[idx] = read_duo_byte() & 0x1FFF;
+		Elementary_Streams_ID[idx] = pmt.elementary_PID[idx];
 		pmt.ES_info_length[idx] = read_duo_byte() & 0x0FFF;
 		len_rem -= (pmt.ES_info_length[idx] + 5);
 		idx++;
 	}
 	pmt.ES_Count = idx;
-
+	Elementary_Streams_Count = pmt.ES_Count;
 
 	return kTSParserError_NoError;
 }
@@ -257,5 +275,135 @@ void CTransportStreamPacket::dump_prog_map_table()
 		g_logoutFile << to_string(idx) << "-PMT:stream_type = " << to_string(pmt.stream_type[idx]) << endl;
 		g_logoutFile << to_string(idx) << "-PMT:elementary_PID = " << to_string(pmt.elementary_PID[idx]) << endl;
 		g_logoutFile << to_string(idx) << "-PMT:ES_info_length = " << to_string(pmt.ES_info_length[idx]) << endl;
+	}
+}
+
+bool CTransportStreamPacket::is_PES_packet()
+{
+	for (int idx = 0; idx < Elementary_Streams_Count; idx++)
+	{
+		if (PID == Elementary_Streams_ID[idx])
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+int CTransportStreamPacket::parse_PES_packet()
+{
+	UINT8 temp8 = 0;
+	UINT16 temp16 = 0;
+	UINT64 temp64 = 0;
+	if ((read_byte() != 0) || (read_byte() != 0) || (read_byte() != 1))
+	{
+		return kTSParserError_PESNotStartWith001;
+	} 
+
+	pes.stream_id = read_byte();
+	pes.PES_packet_length = read_duo_byte();
+
+	if (6 == (pes.stream_id >> 5) & 0x07)
+	{
+		pes.stream_type = PES_Audio;
+	} 
+	else if (0x0E == (pes.stream_id >> 4) & 0x0F)
+	{
+		pes.stream_type = PES_Video;
+	}
+	else
+	{
+		pes.stream_type = PES_Unknown;
+		return kTSParserError_NoError;
+	}
+	
+	temp8 = read_byte();
+	pes.original_or_copy = temp8 & 0x01;
+	pes.copyright = (temp8 >> 1) & 0x01;
+	pes.data_alignment_indicator = (temp8 >> 2) & 0x01;
+	pes.PES_priority = (temp8 >> 3) & 0x01;
+	pes.PES_scrambling_control = (temp8 >> 4) & 0x03;
+
+	temp8 = read_byte();
+	pes.PTS_DTS_flags = (temp8 >> 6) & 0x03;
+	pes.ESCR_flag = (temp8 >> 5) & 0x01;
+	pes.ES_rate_flag = (temp8 >> 4) & 0x01;
+	pes.DSM_trick_mode_flag = (temp8 >> 3) & 0x01;
+	pes.additional_copy_info_flag = (temp8 >> 2) & 0x01;
+	pes.PES_CRC_flag = (temp8 >> 1) & 0x01;
+	pes.PES_extension_flag = temp8 & 0x01;
+
+	pes.PES_header_data_length = read_byte();
+
+	bool hasPTS = pes.PTS_DTS_flags & 2, hasDTS = pes.PTS_DTS_flags & 1;
+	if (hasPTS)
+	{
+		for (int idx = 0; idx < 5; idx++)
+		{
+			pes.PTS_arr[idx] = read_byte();
+		}
+	}
+
+	if (hasDTS)
+	{
+		for (int idx = 0; idx < 5; idx++)
+		{
+			pes.DTS_arr[idx] = read_byte();
+		}
+	}
+
+	return kTSParserError_NoError;
+}
+
+void CTransportStreamPacket::dump_PES_packet()
+{
+	switch (pes.stream_type)
+	{
+	case PES_Unknown:
+		g_logoutFile << "PES:Stream_type: Unknown." << endl;
+		break;
+	case PES_Audio:
+		g_logoutFile << "PES:Stream_type: Audio." << endl;
+		break;
+	case PES_Video:
+		g_logoutFile << "PES:Stream_type: Video." << endl;
+		break;
+	default:
+		break;
+	}
+
+	g_logoutFile << "PES:PES_scrambling_control: " << to_string(pes.PES_scrambling_control) << endl;
+	g_logoutFile << "PES:PES_priority: " << to_string(pes.PES_priority) << endl;
+	g_logoutFile << "PES:data_alignment_indicator: " << to_string(pes.data_alignment_indicator) << endl;
+	g_logoutFile << "PES:copyright: " << to_string(pes.copyright) << endl;
+	g_logoutFile << "PES:original_or_copy: " << to_string(pes.original_or_copy) << endl;
+
+	g_logoutFile << "PES:PTS_DTS_flags: " << to_string(pes.PTS_DTS_flags) << endl;
+	g_logoutFile << "PES:ESCR_flag: " << to_string(pes.ESCR_flag) << endl;
+	g_logoutFile << "PES:ES_rate_flag: " << to_string(pes.ES_rate_flag) << endl;
+	g_logoutFile << "PES:DSM_trick_mode_flag: " << to_string(pes.DSM_trick_mode_flag) << endl;
+	g_logoutFile << "PES:additional_copy_info_flag: " << to_string(pes.additional_copy_info_flag) << endl;
+	g_logoutFile << "PES:PES_CRC_flag: " << to_string(pes.PES_CRC_flag) << endl;
+	g_logoutFile << "PES:PES_extension_flag: " << to_string(pes.PES_extension_flag) << endl;
+
+	bool hasPTS = pes.PTS_DTS_flags & 2, hasDTS = pes.PTS_DTS_flags & 1;
+	if (hasPTS)
+	{
+		g_logoutFile << "PES:PTS: ";
+		for (int idx = 0; idx < 5; idx++)
+		{
+			g_logoutFile << to_string(pes.PTS_arr[idx]) << " ";
+		}
+		g_logoutFile << endl;
+	}
+
+	if (hasDTS)
+	{
+		g_logoutFile << "PES:DTS: ";
+		for (int idx = 0; idx < 5; idx++)
+		{
+			g_logoutFile << to_string(pes.DTS_arr[idx]) << " ";
+		}
+		g_logoutFile << endl;
 	}
 }

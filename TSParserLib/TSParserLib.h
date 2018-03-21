@@ -19,6 +19,7 @@ const int kTSParserError_NullFileName = -1;
 const int kTSParserError_OpenInputFileFailed = -2;
 const int kTSParserError_ReadInputFileFailed = -3;
 const int kTSParserError_PacketNotStartWith47 = -4;
+const int kTSParserError_PESNotStartWith001 = -5;
 
 class TSPARSERLIB_API CTransportStreamParser
 {
